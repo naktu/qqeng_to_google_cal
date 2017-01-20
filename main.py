@@ -1,8 +1,19 @@
 import requests
+import httplib2
+import os
+
+from apiclient import discovery
+from oauth2client import client
+from oauth2client import tools
+from oauth2client.file import Storage
 from bs4 import BeautifulSoup
 from datetime import datetime
-
 from credentials import *
+
+SCOPES = 'https://www.googleapis.com/auth/calendar'
+CLIENT_SECRET_FILE = 'client_secret.json'
+APPLICATION_NAME = 'Google Calendar API Python Quickstart'
+GMT_OFF = '+03:00'
 
 class site():
     def __init__(self, url):
@@ -20,6 +31,35 @@ class site():
     def get_page(self, url):
         r = requests.get(url, cookies = self.cookies)
         return(r.content)
+
+def get_credentials():
+    """Gets valid user credentials from storage.
+
+    If nothing has been stored, or if the stored credentials are invalid,
+    the OAuth2 flow is completed to obtain the new credentials.
+
+    Returns:
+        Credentials, the obtained credential.
+    """
+    home_dir = os.path.expanduser(os.getcwd())
+    credential_dir = os.path.join(home_dir, '.credentials')
+    print(credential_dir)
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir,
+                                   'calendar-python-quickstart.json')
+
+    store = Storage(credential_path)
+    credentials = store.get()
+    if not credentials or credentials.invalid:
+        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
+        flow.user_agent = APPLICATION_NAME
+        if flags:
+            credentials = tools.run_flow(flow, store, flags)
+        else: # Needed only for compatibility with Python 2.6
+            credentials = tools.run(flow, store)
+        print('Storing credentials to ' + credential_path)
+    return credentials
 
 def get_date(page):
     next_lesson = []
@@ -39,7 +79,20 @@ def get_date(page):
 
     return (lesson)
 
-if __name__ == '__main__':
+def add_event():
+
+    credentials = get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('calendar', 'v3', http=http)
+
+    event = {
+        'summary': 'tst1',
+        'start': {'dateTime': '2017-01-21T19:00:00%s' % GMT_OFF},
+        'end':   {'dateTime': '2017-01-21T20:00:00%s' % GMT_OFF},
+    }
+    service.events().insert(calendarId=calendar, sendNotifications=True, body=event).execute()
+
+def main():
     qq_eng_site = {
         '.login': 1,
         'email': qq_eng['email'],
@@ -51,3 +104,6 @@ if __name__ == '__main__':
 
     lesson = get_date(qq.get_page('https://ru.qqeng.com/q/mypage/').decode())
     print(lesson)
+
+if __name__ == '__main__':
+    main()
