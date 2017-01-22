@@ -71,28 +71,37 @@ def get_date(page):
         if tag_class == ['latestlesson', 'mb15']:
             next_lesson = i.text.split()
 
-    lesson = {
-        'date': datetime.strptime(next_lesson[2], '%Y-%m-%d').date(),
-        'time_start': datetime.strptime(next_lesson[3].split('-')[0], '%H:%M').time(),
-        'time_end': datetime.strptime(next_lesson[3].split('-')[1], '%H:%M').time()
-    }
+    if len(next_lesson) < 3:
+        return []
+    else:
+        lesson = {
+            'date': datetime.strptime(next_lesson[2], '%Y-%m-%d').date(),
+            'time_start': datetime.strptime(next_lesson[3].split('-')[0], '%H:%M').time(),
+            'time_end': datetime.strptime(next_lesson[3].split('-')[1], '%H:%M').time()
+        }
 
-    return (lesson)
+    return lesson
 
-def add_event():
-
+def add_event(date, start, end, event_name):
+    # TODO add args like start, end, name
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
-
+    start = str(start)
+    end = str(end)
+    date = str(date)
+    # TODO
+    start = date + "T" + start + GMT_OFF
+    end = date + "T" + end + GMT_OFF
     event = {
-        'summary': 'tst1',
-        'start': {'dateTime': '2017-01-21T19:00:00%s' % GMT_OFF},
-        'end':   {'dateTime': '2017-01-21T20:00:00%s' % GMT_OFF},
+        'summary': event_name,
+        'start': {'dateTime': start},
+        'end':   {'dateTime': end},
     }
     service.events().insert(calendarId=calendar, sendNotifications=True, body=event).execute()
 
 def main():
+    event_name = 'English lesson'
     qq_eng_site = {
         '.login': 1,
         'email': qq_eng['email'],
@@ -103,7 +112,14 @@ def main():
     qq.auth(qq_eng_site)
 
     lesson = get_date(qq.get_page('https://ru.qqeng.com/q/mypage/').decode())
-    print(lesson)
-
+    if lesson == []:
+        print("No new lessons")
+    else:
+        add_event(
+            date       = lesson['date'],
+            start      = lesson['time_start'],
+            end        = lesson['time_end'],
+            event_name = event_name
+        )
 if __name__ == '__main__':
     main()
