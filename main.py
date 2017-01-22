@@ -87,10 +87,12 @@ def add_event(date, start, end, event_name):
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar', 'v3', http=http)
+    have_event = 0
+
     start = str(start)
     end = str(end)
     date = str(date)
-    # TODO
+
     start = date + "T" + start + GMT_OFF
     end = date + "T" + end + GMT_OFF
     event = {
@@ -98,9 +100,37 @@ def add_event(date, start, end, event_name):
         'start': {'dateTime': start},
         'end':   {'dateTime': end},
     }
-    service.events().insert(calendarId=calendar, sendNotifications=True, body=event).execute()
+    evs = events_list()
+
+    if evs:
+        for ev in evs:
+            start_event = ev['start'].get('dateTime', ev['start'].get('date'))
+            if start_event == start and ev['summary'] == event_name:
+                print(start_event, ev['summary'])
+                have_event = 1
+                print("event already added")
+                break
+    if have_event != 1:
+        service.events().insert(calendarId=calendar, sendNotifications=True, body=event).execute()
+
+def events_list():
+    credentials = get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('calendar', 'v3', http=http)
+
+    now = datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+    print('Getting the upcoming 10 events')
+    eventsResult = service.events().list(
+        calendarId=calendar, timeMin=now, maxResults=100, singleEvents=True,
+        orderBy='startTime').execute()
+    events = eventsResult.get('items', [], )
+
+    return events
+
+
 
 def main():
+    # TODO no event duplicates
     event_name = 'English lesson'
     qq_eng_site = {
         '.login': 1,
@@ -123,3 +153,4 @@ def main():
         )
 if __name__ == '__main__':
     main()
+
