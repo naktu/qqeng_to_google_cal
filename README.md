@@ -1,3 +1,3 @@
 # qqeng_to_google_cal
 
-Add next lesson to your google calendar. 
+Add next qqeng lesson to your google calendar. 
